@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fbf8f2">
+  <meta name="description" content="一起养一只小蚂蚁，把普通的小日子，收进共同的记忆里。">
+  <title>Firework · 我们的小蚂蚁</title>
+  <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 2 2.7 7.3L22 12l-7.3 2.7L12 22l-2.7-7.3L2 12l7.3-2.7Z"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13.2A9 9 0 0 1 10.8 3 9 9 0 1 0 21 13.2Z"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9M16 3l5 5-9 9H7v-5Z"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></symbol>
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M20 3C11 2 3 7 4 14c1 7 9 8 13 3 3-4 3-10 3-14ZM4 21l10-11"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+  </defs></svg>
+  <div class="site-shell">
+    <header class="site-header">
+      <a class="brand" href="#home" aria-label="Firework 首页"><span class="brand-mark"><svg class="icon"><use href="#i-spark"/></svg></span>firework<span class="brand-dot">.</span></a>
+      <nav aria-label="主要导航"><a href="#home" class="nav-home">小蚁的家</a><a href="#memories">我们的记忆</a></nav>
+      <button class="settings-trigger" id="open-settings" type="button" aria-label="小窝设置"><svg class="icon"><use href="#i-settings"/></svg><span>小窝设置</span></button>
+    </header>
+
+    <main id="home">
+      <section class="welcome" aria-labelledby="welcome-title">
+        <div><div class="eyebrow"><span class="tiny-spark">✦</span> OUR LITTLE WORLD</div><h1 id="welcome-title">小小的它，大大的牵挂<span>。</span></h1><p>把平凡的小日子，一点一点喂给它。</p></div>
+        <div class="meet-day"><span class="day-label">相遇的第</span><span id="age-days">01</span><span class="day-label">天 <svg class="icon"><use href="#i-sun"/></svg></span></div>
+      </section>
+
+      <div class="home-grid">
+        <section class="pet-home" aria-label="小蚂蚁的家">
+          <div class="pet-home-top"><span class="home-tag"><svg class="icon"><use href="#i-leaf"/></svg> 小蚁的慢生活</span><span class="mood-label" id="mood-label">正在等你来</span></div>
+          <div class="pet-scene" id="pet-scene">
+            <div class="scene-orbit orbit-one" aria-hidden="true"></div><div class="scene-orbit orbit-two" aria-hidden="true"></div>
+            <div class="floating-star star-one" aria-hidden="true">✦</div><div class="floating-star star-two" aria-hidden="true">✧</div>
+            <div class="pet-speech" id="pet-speech" aria-live="polite">见到你真好，今天也一起慢慢来吧。</div>
+            <div class="pet-ground" aria-hidden="true"></div>
+            <button class="pet-character" id="pet-character" type="button" aria-label="摸摸小蚂蚁"><img src="./assets/ant.png" alt="圆滚滚的小蚂蚁，抱着一颗金色星星糖" width="1254" height="1254" fetchpriority="high" draggable="false"></button>
+            <span class="sleep-letters" aria-hidden="true">z z z</span>
+            <div class="scene-caption"><span id="pet-name">小满</span><span class="pet-status" id="pet-status">一只爱收集小幸福的蚂蚁</span></div>
+            <div id="particles" class="particles" aria-hidden="true"></div>
+          </div>
+          <div class="pet-actions" aria-label="照顾小蚂蚁">
+            <button data-care="feed" type="button"><span class="action-icon sugar"><svg class="icon"><use href="#i-spark"/></svg></span><span>喂颗星星糖</span></button>
+            <button data-care="pet" type="button"><span class="action-icon cuddle"><svg class="icon"><use href="#i-heart"/></svg></span><span>摸摸小脑袋</span></button>
+            <button data-care="rest" type="button"><span class="action-icon rest"><svg class="icon"><use href="#i-moon"/></svg></span><span>陪它歇一会</span></button>
+          </div>
+          <p class="gentle-note">不用赶路，也不用每天都很厉害。来过，就很好。</p>
+        </section>
+
+        <aside class="daily-panel">
+          <section class="care-card" aria-labelledby="care-title">
+            <div class="section-kicker">TODAY, TOGETHER</div><div class="card-title-row"><h2 id="care-title">今天，谁来陪它？</h2><span class="spark-count" id="spark-count">0 / 2</span></div>
+            <div class="caregivers" role="group" aria-label="选择正在照顾它的人">
+              <button class="caregiver selected" data-actor="a" type="button" aria-pressed="true"><span class="avatar avatar-a" aria-hidden="true">我</span><span><strong data-person-name="a">我</strong><small data-person-status="a">还没来过</small></span><span class="caregiver-check" aria-hidden="true">✓</span></button>
+              <button class="caregiver" data-actor="b" type="button" aria-pressed="false"><span class="avatar avatar-b" aria-hidden="true">另</span><span><strong data-person-name="b">另一位</strong><small data-person-status="b">还没来过</small></span><span class="caregiver-check" aria-hidden="true">✓</span></button>
+            </div>
+            <div class="together-message" id="together-message"><svg class="icon"><use href="#i-spark"/></svg><span id="together-copy">两个人都来过，小火花就亮了。</span></div>
+          </section>
+
+          <section class="note-card" aria-labelledby="note-title">
+            <div class="section-kicker">A LITTLE SOMETHING</div><h2 id="note-title">今天的小事，说给它听</h2><p class="card-description">一句晚安，一顿好吃的，一件想记住的小事。</p>
+            <form id="memory-form">
+              <label class="sr-only" for="memory-input">想让小蚂蚁记住的话</label>
+              <textarea id="memory-input" placeholder="比如：今天一起吃的那碗面，真的好好吃。" rows="4" required></textarea>
+              <div class="input-foot"><span><svg class="icon"><use href="#i-heart"/></svg> 它会好好收藏</span><span id="char-count">0 / 160</span></div>
+              <button class="primary-button" type="submit"><span>放进我们的记忆里</span><svg class="icon"><use href="#i-arrow"/></svg></button>
+            </form>
+          </section>
+
+          <button class="whisper-button" type="button" id="whisper"><span class="whisper-star">✧</span><span>听它说句悄悄话</span><svg class="icon"><use href="#i-arrow"/></svg></button>
+        </aside>
+      </div>
+
+      <section class="memories-section" id="memories" aria-labelledby="memories-title">
+        <div class="memories-header"><div><div class="section-kicker">SMALL DAYS, SWEET MEMORIES</div><h2 id="memories-title">我们的小小记忆罐<span class="memory-count" id="memory-count">0 张纸条</span></h2></div><div class="memory-filters" role="group" aria-label="筛选记忆"><button type="button" data-filter="all" aria-pressed="true">全部</button><button type="button" data-filter="note" aria-pressed="false">小纸条</button><button type="button" data-filter="care" aria-pressed="false">陪伴</button></div></div>
+        <div class="memory-list" id="memory-list"></div>
+        <button class="load-more" id="load-more" type="button" hidden>再翻几页回忆</button>
+        <div class="memory-footer"><span><svg class="icon"><use href="#i-heart"/></svg> 已一起点亮 <strong id="together-days">0</strong> 天小火花</span><span>记忆保存在此设备 <button type="button" id="memory-help" aria-label="了解记忆保存方式">?</button></span></div>
+      </section>
+    </main>
+    <footer class="site-footer"><span class="footer-brand">firework.</span><span>两个人，一只小蚂蚁，还有好多好多明天。</span><span class="footer-spark" aria-hidden="true">✦</span></footer>
+  </div>
+
+  <dialog id="settings-dialog" aria-labelledby="settings-title">
+    <div class="dialog-header"><div><div class="section-kicker">MAKE IT OURS</div><h2 id="settings-title">给小窝一点专属感</h2></div><button class="icon-button" id="close-settings" type="button" aria-label="关闭设置"><svg class="icon"><use href="#i-close"/></svg></button></div>
+    <form id="settings-form"><label>小蚂蚁的名字<input name="petName" autocomplete="off" required></label><div class="name-fields"><label>第一位照顾者<input name="a" autocomplete="off" required></label><label>第二位照顾者<input name="b" autocomplete="off" required></label></div><button class="primary-button" type="submit">保存我们的小窝</button></form>
+    <div class="memory-settings"><h3>把回忆好好收着</h3><p>记忆保存在这个浏览器里，不会自动同步到另一台设备。导出一份备份，也可以交给对方导入；导入会合并回忆。</p><div class="backup-actions"><button type="button" id="export-memory"><svg class="icon"><use href="#i-download"/></svg> 导出记忆</button><button type="button" id="import-memory"><svg class="icon"><use href="#i-note"/></svg> 导入记忆</button></div><button id="export-recovery" class="recovery-button" type="button" hidden>导出旧记忆恢复文件</button><input id="import-file" type="file" accept="application/json,.json" hidden><p class="dialog-note">清理浏览器数据会移除本地记忆，记得偶尔备份。记忆罐可收藏 10000 条互动，装满时会提醒你。小满现在用预设的话回应你，还没有接入语言模型。</p></div>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="storage-warning" id="storage-warning" role="alert" hidden>这个浏览器暂时无法保存记忆，请在离开前导出备份。</div>
+</body>
+</html>
