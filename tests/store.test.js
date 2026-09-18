@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createState, loadState, saveState, applyCare, updateProfiles, getSummary, exportState, mergeImport } from '../store.js';
 
-const date = (day, hour = 12) => new Date(2026, 8, day, hour, 0, 0);
+const date = (day, hour = 12) => new Date(Date.UTC(2026, 8, day, hour - 8, 0, 0));
 const care = (state, actorId, now = date(18), kind = 'pet', text = '') => applyCare(state, { kind, actorId, text }, now);
 const memoryStorage = () => {
   const values = new Map();
@@ -14,7 +14,7 @@ const memoryStorage = () => {
   };
 };
 
-test('a shared day is counted once, and the next local calendar day starts separately', () => {
+test('a shared day is counted once, and the next Asia/Shanghai calendar day starts separately', () => {
   const original = createState(date(18));
   const first = care(original, 'a', date(18, 23));
   assert.equal(first.newTogetherDay, false);

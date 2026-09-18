@@ -1,10 +1,16 @@
-import { loadState, saveState, applyCare, updateProfiles, getSummary, exportState, mergeImport } from './store.js';
+import { createState, loadState, saveState, applyCare, updateProfiles, getSummary, exportState, mergeImport } from './store.js';
+
+import { SharedHome, readKey, KEY_STORAGE, ACTOR_STORAGE } from './sync.js';
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 const loaded = loadState();
 let state = loaded.state;
-let actorId = 'a';
+let actorId = null;
+let home = null;
+let settingsVersion = 0;
+try { actorId = localStorage.getItem(ACTOR_STORAGE); } catch {}
+if (!['a', 'b'].includes(actorId)) actorId = null;
 let filter = 'all';
 let visibleCount = 6;
 let asleep = false;
@@ -17,7 +23,7 @@ const pet = $('#pet-character');
 const dialog = $('#settings-dialog');
 const input = $('#memory-input');
 const form = $('#settings-form');
-const dateFormat = new Intl.DateTimeFormat('zh-CN', { month: 'long', day: 'numeric' });
+const dateFormat = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: 'long', day: 'numeric' });
 const iconFor = { feed: 'spark', pet: 'heart', rest: 'moon', note: 'note' };
 
 function icon(name) {
@@ -39,6 +45,7 @@ function notify(text) {
 }
 
 function persist() {
+  if (home) return home.storageOK;
   const latest = loadState();
   if (latest.recoveryKey) recoveryKey = latest.recoveryKey;
   if (!latest.error) {
@@ -88,7 +95,7 @@ function renderMemories() {
     top.className = 'memory-card-top';
     const date = document.createElement('time');
     date.dateTime = event.createdAt;
-    date.textContent = `${new Date(event.createdAt).getFullYear()} 年 ${dateFormat.format(new Date(event.createdAt))}`;
+    date.textContent = dateFormat.format(new Date(event.createdAt));
     top.append(date, icon(iconFor[event.kind]));
     const text = document.createElement('p');
     text.textContent = careText(event);
@@ -151,9 +158,12 @@ function animate(kind, together) {
 }
 
 function remember(kind, text = '') {
+  if (!home || !home.profileVersion) { $('#join-dialog').showModal(); return false; }
+  if (!actorId) { $('#identity-dialog').showModal(); return false; }
   try {
     const result = applyCare(state, { kind, actorId, text });
     state = result.state;
+    home.enqueue([result.event]);
     asleep = kind === 'rest';
     const saved = persist();
     const name = personName(actorId);
@@ -178,8 +188,7 @@ function remember(kind, text = '') {
 }
 
 $$('[data-actor]').forEach(button => button.addEventListener('click', () => {
-  actorId = button.dataset.actor;
-  render();
+  chooseActor(button.dataset.actor);
 }));
 $$('[data-care]').forEach(button => button.addEventListener('click', () => remember(button.dataset.care)));
 pet.addEventListener('click', () => remember('pet'));
@@ -214,6 +223,9 @@ $$('[data-filter]').forEach(button => button.addEventListener('click', () => {
 $('#load-more').addEventListener('click', () => { visibleCount += 6; renderMemories(); });
 
 function openSettings() {
+  settingsVersion = home?.profileVersion || 0;
+  $('#copy-invite').disabled = !home?.profileVersion;
+  $('#bring-local').hidden = !home || !loaded.state.events.length;
   form.elements.petName.value = state.profiles.petName;
   form.elements.a.value = personName('a');
   form.elements.b.value = personName('b');
@@ -227,19 +239,29 @@ dialog.addEventListener('click', event => {
   const box = dialog.getBoundingClientRect();
   if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.close();
 });
-form.addEventListener('submit', event => {
+form.addEventListener('submit', async event => {
   event.preventDefault();
   try {
-    state = updateProfiles(state, { petName: form.elements.petName.value, a: form.elements.a.value, b: form.elements.b.value });
-    const saved = persist();
-    render();
+    if (!home?.profileVersion) throw new Error('请先用邀请链接进入共同小窝。');
+    const next = updateProfiles(state, { petName: form.elements.petName.value, a: form.elements.a.value, b: form.elements.b.value });
+    const submit = form.querySelector('[type="submit"]');
+    submit.disabled = true;
+    try { await home.setProfiles(next.profiles, settingsVersion); }
+    finally { submit.disabled = false; settingsVersion = home.profileVersion; }
     speech.textContent = `我叫${state.profiles.petName}，是你们的小蚂蚁。请多多关照呀。`;
     dialog.close();
-    notify(saved ? '从今天起，小窝有了你们的名字。' : '名字已更新，暂时无法保存，请导出备份。');
-  } catch (error) { notify(error.message); }
+    notify('小窝的名字已经同步给对方啦。');
+  } catch (error) {
+    if (error.status === 409) {
+      form.elements.petName.value = state.profiles.petName;
+      form.elements.a.value = personName('a'); form.elements.b.value = personName('b');
+    }
+    notify(error.message);
+  }
 });
 $('#export-memory').addEventListener('click', () => {
-  const blob = new Blob([exportState(state)], { type: 'application/json' });
+  const backup = state.events.length > 10000 ? JSON.stringify({ ...state, exportNote: '此紧急备份包含超出容量的待同步记录，请分批恢复。' }, null, 2) : exportState(state);
+  const blob = new Blob([backup], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -256,27 +278,22 @@ $('#import-file').addEventListener('change', async event => {
   if (!file) return;
   try {
     if (file.size > 16 * 1024 * 1024) throw new Error('请选择 16 MB 以内的记忆文件。');
-    state = mergeImport(state, await file.text());
+    if (!home?.profileVersion) throw new Error('请先进入共同小窝。');
+    const imported = mergeImport(createState(), await file.text());
+    const known = new Set(state.events.map(item => item.id));
+    home.enqueue(imported.events.filter(item => !known.has(item.id)));
     const saved = persist();
     render();
     form.elements.petName.value = state.profiles.petName;
     form.elements.a.value = personName('a');
     form.elements.b.value = personName('b');
     speech.textContent = '这些小幸福，我都想起来啦。欢迎回家。';
-    notify(saved ? '回忆已合并，原来的记忆也都还在。' : '回忆已导入，但当前浏览器无法保存，请再导出备份。');
+    notify(saved ? '回忆已合并，正在同步到共同记忆罐。' : '回忆已导入，但当前浏览器无法保存，请再导出备份。');
   } catch (error) { notify(error.message); }
   event.target.value = '';
 });
 window.addEventListener('storage', event => {
-  if (event.key === 'firework.ant.v1' && event.newValue) {
-    try {
-      state = mergeImport(state, event.newValue);
-      const incoming = mergeImport(state, event.newValue);
-      const remoteIds = new Set(JSON.parse(event.newValue).events.map(item => item.id));
-      if (state.events.some(item => !remoteIds.has(item.id))) saveState(incoming);
-      render();
-    } catch { /* Keep this tab's valid memories. */ }
-  }
+  if (event.key?.startsWith('firework.shared.pending.') && home) { home.readPending(); home.emit(); void home.sync(); }
 });
 $('#export-recovery').addEventListener('click', () => {
   try {
@@ -292,15 +309,78 @@ $('#export-recovery').addEventListener('click', () => {
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   } catch (error) { notify(error.message); }
 });
-document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
+function chooseActor(id) {
+  actorId = id;
+  try { localStorage.setItem(ACTOR_STORAGE, id); } catch {}
+  render();
+}
+$$('[data-identity]').forEach(button => button.addEventListener('click', () => {
+  chooseActor(button.dataset.identity);
+  $('#identity-dialog').close();
+  notify(`欢迎回家，${personName(actorId)}。`);
+}));
+const syncStatus = $('#sync-status');
+const volatile = new Map();
+let sharedStorage;
+try { sharedStorage = localStorage; }
+catch { sharedStorage = { getItem: key => volatile.get(key) ?? null, setItem() { throw new Error('storage'); }, removeItem: key => volatile.delete(key), key: i => [...volatile.keys()][i], get length() { return volatile.size; } }; }
+async function connect(key) {
+  const candidate = new SharedHome({ key, storage: sharedStorage,
+    onChange: next => { if (home === candidate) { state = next; render(); } },
+    onStatus: message => { syncStatus.textContent = message; if (home !== candidate) $('#join-message').textContent = message; },
+  });
+  // The room has a single fixed key; cached access also works temporarily offline.
+  const success = await candidate.sync();
+  if (candidate.lastError?.status === 401 || (!success && !candidate.profileVersion)) return false;
+  home = candidate;
+  state = home.view(); render();
+  try { sharedStorage.setItem(KEY_STORAGE, key); } catch {}
+  $('#join-dialog').close();
+  if (!actorId) {
+    for (const button of $$('[data-identity]')) button.textContent = `我是${personName(button.dataset.identity)}`;
+    $('#identity-dialog').showModal();
+  }
+  return true;
+}
+$('#join-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const key = readKey($('#invite-input').value);
+  if (!key) { $('#join-message').textContent = '请粘贴完整的邀请链接。'; return; }
+  const button = $('#join-form button'); button.disabled = true;
+  try { await connect(key); } finally { button.disabled = false; }
+});
+function inviteURL() { return `${location.origin}${location.pathname}#key=${home.key}`; }
+$('#copy-invite').addEventListener('click', async () => {
+  if (!home) return;
+  try { await navigator.clipboard.writeText(inviteURL()); notify('邀请链接已复制，发给对方就能一起养小蚁啦。'); }
+  catch { $('#invite-copy').hidden = false; $('#invite-copy').value = inviteURL(); $('#invite-copy').select(); }
+});
+$('#bring-local').addEventListener('click', () => {
+  if (!home) return;
+  const known = new Set(state.events.map(item => item.id));
+  home.enqueue(loaded.state.events.filter(item => !known.has(item.id)));
+  $('#bring-local').hidden = true;
+  notify('旧回忆正在带入共同小窝，原始本地副本也会保留。');
+});
+$('#retry-sync').addEventListener('click', () => home ? void home.sync() : $('#join-dialog').showModal());
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); void home?.sync(); } });
+window.addEventListener('online', () => void home?.sync());
+setInterval(() => { if (!document.hidden) void home?.sync(); }, 15000);
 setInterval(() => { if (!document.hidden) render(); }, 60000);
-
 render();
 if (loaded.error) {
   $('#storage-warning').textContent = recoveryKey ? '有一份旧记忆未能读取，原始数据已保留。请在小窝设置中导出恢复文件。' : loaded.error;
   $('#storage-warning').hidden = false;
   $('#export-recovery').hidden = !recoveryKey;
-} else if (!persist()) {
-  $('#storage-warning').hidden = false;
 }
-if (state.events.length) speech.textContent = `你回来啦！${state.profiles.petName}和那些小小的回忆，一直都在。`;
+async function start() {
+  const fragmentKey = readKey(location.hash);
+  let storedKey;
+  try { storedKey = readKey(sharedStorage.getItem(KEY_STORAGE) || ''); } catch {}
+  if (fragmentKey) history.replaceState(null, '', location.pathname + location.search);
+  const key = fragmentKey || storedKey;
+  if (key && await connect(key)) return;
+  state = createState(); render();
+  $('#join-dialog').showModal();
+}
+void start();

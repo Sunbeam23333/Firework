@@ -14,3 +14,19 @@ dialog{border:1px solid var(--line);border-radius:24px;background:#fffdf8;color:
 @media(max-width:390px){.site-shell{padding:0 14px}.site-header nav{gap:12px}.brand{font-size:25px}.brand-mark{width:24px;margin-right:4px}.site-header{gap:12px}.welcome h1{font-size:23px}.pet-actions{margin-left:12px;margin-right:12px;gap:5px}.pet-actions button{font-size:11px;gap:5px}.pet-speech{font-size:12px;padding:10px 13px}.pet-status{font-size:10px}.memory-list{grid-template-columns:1fr}.memory-header h2{font-size:21px}.memory-count{margin-left:9px}.footer-spark{display:none}}
 @media(pointer:coarse){button{min-height:44px}.memory-footer button{min-width:28px;min-height:28px}.pet-character{min-height:initial}.icon-button{min-width:44px}.caregiver-check{min-height:0}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{animation:none!important;transition:none!important}}
+
+/* A shared home keeps the same soft, quiet visual language. */
+.invite-button, .identity-choices button { width:100%; border:1px solid #ddc8b6; border-radius:14px; padding:15px 18px; background:#f2e7d9; color:#674a38; font:inherit; font-weight:650; cursor:pointer; }
+.invite-button { margin:12px 0 4px; }
+.identity-choices { display:grid; gap:12px; margin-top:24px; }
+.identity-choices button:last-child { background:#edf0e6; border-color:#d5ddc7; }
+.join-copy { color:#897968; line-height:1.9; margin:16px 0 24px; }
+#join-form { display:grid; gap:12px; }
+#join-form label { font-size:13px; color:#897968; }
+#join-form input, #invite-copy { box-sizing:border-box; width:100%; border:1px solid #dfd3c5; border-radius:12px; padding:14px; background:#fffdf9; color:#604b3c; font:inherit; }
+#retry-sync { background:transparent; border:0; color:#a06c46; cursor:pointer; margin-left:7px; font:inherit; }
+#sync-status { font-size:12px; }
+#join-dialog, #identity-dialog { max-width:440px; }
+.memory-footer > span:last-child { flex-wrap:wrap; }
+button:disabled { opacity:.55; cursor:wait; }
+#join-dialog .dialog-note { margin:16px 0 0; color:#938574; font-size:12px; line-height:1.7; }

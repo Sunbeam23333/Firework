@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
   <meta name="theme-color" content="#fbf8f2">
   <meta name="description" content="一起养一只小蚂蚁，把普通的小日子，收进共同的记忆里。">
   <title>Firework · 我们的小蚂蚁</title>
@@ -62,8 +63,8 @@
           <section class="care-card" aria-labelledby="care-title">
             <div class="section-kicker">TODAY, TOGETHER</div><div class="card-title-row"><h2 id="care-title">今天，谁来陪它？</h2><span class="spark-count" id="spark-count">0 / 2</span></div>
             <div class="caregivers" role="group" aria-label="选择正在照顾它的人">
-              <button class="caregiver selected" data-actor="a" type="button" aria-pressed="true"><span class="avatar avatar-a" aria-hidden="true">我</span><span><strong data-person-name="a">我</strong><small data-person-status="a">还没来过</small></span><span class="caregiver-check" aria-hidden="true">✓</span></button>
-              <button class="caregiver" data-actor="b" type="button" aria-pressed="false"><span class="avatar avatar-b" aria-hidden="true">另</span><span><strong data-person-name="b">另一位</strong><small data-person-status="b">还没来过</small></span><span class="caregiver-check" aria-hidden="true">✓</span></button>
+              <button class="caregiver selected" data-actor="a" type="button" aria-pressed="true"><span class="avatar avatar-a" aria-hidden="true">我</span><span><strong data-person-name="a">小小金</strong><small data-person-status="a">还没来过</small></span><span class="caregiver-check" aria-hidden="true">✓</span></button>
+              <button class="caregiver" data-actor="b" type="button" aria-pressed="false"><span class="avatar avatar-b" aria-hidden="true">另</span><span><strong data-person-name="b">小蚂蚁</strong><small data-person-status="b">还没来过</small></span><span class="caregiver-check" aria-hidden="true">✓</span></button>
             </div>
             <div class="together-message" id="together-message"><svg class="icon"><use href="#i-spark"/></svg><span id="together-copy">两个人都来过，小火花就亮了。</span></div>
           </section>
@@ -86,7 +87,7 @@
         <div class="memories-header"><div><div class="section-kicker">SMALL DAYS, SWEET MEMORIES</div><h2 id="memories-title">我们的小小记忆罐<span class="memory-count" id="memory-count">0 张纸条</span></h2></div><div class="memory-filters" role="group" aria-label="筛选记忆"><button type="button" data-filter="all" aria-pressed="true">全部</button><button type="button" data-filter="note" aria-pressed="false">小纸条</button><button type="button" data-filter="care" aria-pressed="false">陪伴</button></div></div>
         <div class="memory-list" id="memory-list"></div>
         <button class="load-more" id="load-more" type="button" hidden>再翻几页回忆</button>
-        <div class="memory-footer"><span><svg class="icon"><use href="#i-heart"/></svg> 已一起点亮 <strong id="together-days">0</strong> 天小火花</span><span>记忆保存在此设备 <button type="button" id="memory-help" aria-label="了解记忆保存方式">?</button></span></div>
+        <div class="memory-footer"><span><svg class="icon"><use href="#i-heart"/></svg> 已一起点亮 <strong id="together-days">0</strong> 天小火花</span><span><span id="sync-status" role="status" aria-live="polite">等待进入共同小窝</span> <button type="button" id="retry-sync">同步</button> <button type="button" id="memory-help" aria-label="了解记忆保存方式">?</button></span></div>
       </section>
     </main>
     <footer class="site-footer"><span class="footer-brand">firework.</span><span>两个人，一只小蚂蚁，还有好多好多明天。</span><span class="footer-spark" aria-hidden="true">✦</span></footer>
@@ -95,8 +96,15 @@
   <dialog id="settings-dialog" aria-labelledby="settings-title">
     <div class="dialog-header"><div><div class="section-kicker">MAKE IT OURS</div><h2 id="settings-title">给小窝一点专属感</h2></div><button class="icon-button" id="close-settings" type="button" aria-label="关闭设置"><svg class="icon"><use href="#i-close"/></svg></button></div>
     <form id="settings-form"><label>小蚂蚁的名字<input name="petName" autocomplete="off" required></label><div class="name-fields"><label>第一位照顾者<input name="a" autocomplete="off" required></label><label>第二位照顾者<input name="b" autocomplete="off" required></label></div><button class="primary-button" type="submit">保存我们的小窝</button></form>
-    <div class="memory-settings"><h3>把回忆好好收着</h3><p>记忆保存在这个浏览器里，不会自动同步到另一台设备。导出一份备份，也可以交给对方导入；导入会合并回忆。</p><div class="backup-actions"><button type="button" id="export-memory"><svg class="icon"><use href="#i-download"/></svg> 导出记忆</button><button type="button" id="import-memory"><svg class="icon"><use href="#i-note"/></svg> 导入记忆</button></div><button id="export-recovery" class="recovery-button" type="button" hidden>导出旧记忆恢复文件</button><input id="import-file" type="file" accept="application/json,.json" hidden><p class="dialog-note">清理浏览器数据会移除本地记忆，记得偶尔备份。记忆罐可收藏 10000 条互动，装满时会提醒你。小满现在用预设的话回应你，还没有接入语言模型。</p></div>
+    <div class="memory-settings"><h3>把回忆好好收着</h3><p>小小金和小蚂蚁共用一个记忆罐。联网时约每 15 秒同步，断网时先暂存，回来后继续。每天的小火花统一按北京时间计算。</p><button class="invite-button" id="copy-invite" type="button">复制邀请链接，带对方回家 ↗</button><input id="invite-copy" aria-label="邀请链接" readonly hidden><p class="dialog-note">邀请链接就是小窝钥匙，拿到它的人可以查看和写入回忆，请只发给对方。名字用于署名，可随时切换。</p><button id="bring-local" class="recovery-button" type="button" hidden>把这台设备的旧回忆带进来</button><div class="backup-actions"><button type="button" id="export-memory"><svg class="icon"><use href="#i-download"/></svg> 导出记忆</button><button type="button" id="import-memory"><svg class="icon"><use href="#i-note"/></svg> 导入记忆</button></div><button id="export-recovery" class="recovery-button" type="button" hidden>导出旧记忆恢复文件</button><input id="import-file" type="file" accept="application/json,.json" hidden><p class="dialog-note">清理浏览器数据后，用邀请链接重新进入，就能找回已同步的回忆；未同步的记录请先导出。记忆罐可收藏 10000 条互动，装满时会提醒你。小满现在用预设的话回应你，还没有接入语言模型。</p></div>
   </dialog>
+  <dialog id="join-dialog" aria-labelledby="join-title">
+    <div class="section-kicker">A HOME FOR TWO</div><h2 id="join-title">把小窝的门轻轻打开</h2>
+    <p class="join-copy">小小金和小蚂蚁，一起收藏小日子。<br>从邀请链接进来，就能看到同一只小蚁。</p>
+    <form id="join-form"><label for="invite-input">你们的小窝邀请链接</label><input id="invite-input" type="password" autocomplete="off" placeholder="粘贴邀请链接" required><button class="primary-button" type="submit">一起回家 ↗</button></form>
+    <p id="join-message" class="dialog-note" role="status">第一次使用，请打开为你们准备的专属邀请链接。</p>
+  </dialog>
+  <dialog id="identity-dialog" aria-labelledby="identity-title"><div class="section-kicker">WELCOME HOME</div><h2 id="identity-title">今天，是谁回来啦？</h2><p class="join-copy">选好名字，小蚁就知道这份甜是谁送来的。<br>这台设备会记住你，也能随时切换。</p><div class="identity-choices"><button type="button" data-identity="a">我是小小金</button><button type="button" data-identity="b">我是小蚂蚁</button></div></dialog>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <div class="storage-warning" id="storage-warning" role="alert" hidden>这个浏览器暂时无法保存记忆，请在离开前导出备份。</div>
 </body>

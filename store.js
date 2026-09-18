@@ -29,7 +29,7 @@ function validDate(now) {
 
 function dayKey(now) {
   validDate(now);
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return new Date(now.getTime() + 8 * 3600000).toISOString().slice(0, 10);
 }
 
 function validDay(value) {
@@ -184,7 +184,7 @@ export function createState(now = new Date()) {
   return {
     version: 1,
     createdAt: validDate(now).toISOString(),
-    profiles: { petName: '小满', caregivers: [{ id: 'a', name: '我' }, { id: 'b', name: '另一位' }] },
+    profiles: { petName: '小满', caregivers: [{ id: 'a', name: '小小金' }, { id: 'b', name: '小蚂蚁' }] },
     events: [],
     careDays: {},
   };
