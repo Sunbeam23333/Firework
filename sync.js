@@ -1,5 +1,5 @@
 import { createState, exportState, mergeImport } from './store.js';
-export const API_URL = 'https://firework-shared-memory.chummy-rose-4464.chatgpt.site';
+export const API_URL = 'https://firework-shared-memory.sunbeam514.chatgpt.site';
 export const KEY_STORAGE = 'firework.shared.key';
 export const ACTOR_STORAGE = 'firework.shared.actor';
 const CACHE = 'firework.shared.cache.v1';
