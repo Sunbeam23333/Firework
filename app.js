@@ -8,6 +8,9 @@ const loaded = loadState();
 let state = loaded.state;
 let actorId = null;
 let home = null;
+let pendingKey = null;
+let connecting = null;
+let connectionAttempt = 0;
 let settingsVersion = 0;
 try { actorId = localStorage.getItem(ACTOR_STORAGE); } catch {}
 if (!['a', 'b'].includes(actorId)) actorId = null;
@@ -324,28 +327,50 @@ const volatile = new Map();
 let sharedStorage;
 try { sharedStorage = localStorage; }
 catch { sharedStorage = { getItem: key => volatile.get(key) ?? null, setItem() { throw new Error('storage'); }, removeItem: key => volatile.delete(key), key: i => [...volatile.keys()][i], get length() { return volatile.size; } }; }
-async function connect(key) {
-  const candidate = new SharedHome({ key, storage: sharedStorage,
-    onChange: next => { if (home === candidate) { state = next; render(); } },
-    onStatus: message => { syncStatus.textContent = message; if (home !== candidate) $('#join-message').textContent = message; },
-  });
-  // The room has a single fixed key; cached access also works temporarily offline.
-  const success = await candidate.sync();
-  if (candidate.lastError?.status === 401 || (!success && !candidate.profileVersion)) return false;
-  home = candidate;
-  state = home.view(); render();
-  try { sharedStorage.setItem(KEY_STORAGE, key); } catch {}
-  $('#join-dialog').close();
-  if (!actorId) {
-    for (const button of $$('[data-identity]')) button.textContent = `我是${personName(button.dataset.identity)}`;
-    $('#identity-dialog').showModal();
-  }
-  return true;
+function connect(key) {
+  if (connecting?.key === key) return connecting.promise;
+  pendingKey = key;
+  const attempt = ++connectionAttempt;
+  const promise = (async () => {
+    const candidate = new SharedHome({ key, storage: sharedStorage,
+      onChange: next => { if (home === candidate) { state = next; render(); } },
+      onStatus: message => {
+        if (attempt !== connectionAttempt) return;
+        syncStatus.textContent = message;
+        if (home !== candidate) $('#join-message').textContent = message;
+      },
+    });
+    const success = await candidate.sync();
+    if (attempt !== connectionAttempt) return false;
+    if (candidate.lastError?.status === 401) { pendingKey = null; return false; }
+    // A previously verified cache can be used offline without replacing a valid key.
+    if (!success && !candidate.profileVersion) return false;
+    home = candidate;
+    pendingKey = null;
+    state = home.view(); render();
+    try { sharedStorage.setItem(KEY_STORAGE, key); } catch {}
+    if (readKey(location.hash)) history.replaceState(null, '', location.pathname + location.search);
+    $('#join-dialog').close();
+    if (!actorId) {
+      for (const button of $$('[data-identity]')) button.textContent = `我是${personName(button.dataset.identity)}`;
+      $('#identity-dialog').showModal();
+    }
+    return true;
+  })();
+  connecting = { key, promise };
+  return promise.finally(() => { if (connecting?.promise === promise) connecting = null; });
+}
+function retryConnection() {
+  if (pendingKey) return connect(pendingKey);
+  if (home) return home.sync();
+  return Promise.resolve(false);
 }
 $('#join-form').addEventListener('submit', async event => {
   event.preventDefault();
   const key = readKey($('#invite-input').value);
   if (!key) { $('#join-message').textContent = '请粘贴完整的邀请链接。'; return; }
+  // Keep an unverified invitation in this tab so a failed first attempt survives reload.
+  history.replaceState(null, '', location.pathname + location.search + '#key=' + key);
   const button = $('#join-form button'); button.disabled = true;
   try { await connect(key); } finally { button.disabled = false; }
 });
@@ -362,10 +387,10 @@ $('#bring-local').addEventListener('click', () => {
   $('#bring-local').hidden = true;
   notify('旧回忆正在带入共同小窝，原始本地副本也会保留。');
 });
-$('#retry-sync').addEventListener('click', () => home ? void home.sync() : $('#join-dialog').showModal());
-document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); void home?.sync(); } });
-window.addEventListener('online', () => void home?.sync());
-setInterval(() => { if (!document.hidden) void home?.sync(); }, 15000);
+$('#retry-sync').addEventListener('click', () => home || pendingKey ? void retryConnection() : $('#join-dialog').showModal());
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); void retryConnection(); } });
+window.addEventListener('online', () => void retryConnection());
+setInterval(() => { if (!document.hidden) void retryConnection(); }, 15000);
 setInterval(() => { if (!document.hidden) render(); }, 60000);
 render();
 if (loaded.error) {
@@ -377,8 +402,8 @@ async function start() {
   const fragmentKey = readKey(location.hash);
   let storedKey;
   try { storedKey = readKey(sharedStorage.getItem(KEY_STORAGE) || ''); } catch {}
-  if (fragmentKey) history.replaceState(null, '', location.pathname + location.search);
   const key = fragmentKey || storedKey;
+  if (key) $('#invite-input').value = key;
   if (key && await connect(key)) return;
   state = createState(); render();
   $('#join-dialog').showModal();

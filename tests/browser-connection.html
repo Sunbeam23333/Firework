@@ -1,0 +1,18 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>Firework 浏览器连接测试</title><h1>浏览器请求兼容性检查</h1><p>只请求本地测试文件，不访问共同回忆。</p><button id="run">运行检查</button><pre id="result" role="status"></pre><script type="module">
+import { SharedHome } from '../sync.js';
+const output = document.querySelector('#result');
+document.querySelector('#run').onclick = async () => {
+  const receiver = { fetcher: globalThis.fetch };
+  const rows = [];
+  try { const r = await receiver.fetcher('../package.json'); rows.push('对象方法调用：' + r.status); } catch(e) { rows.push('对象方法调用：' + e.name + ': ' + e.message); }
+  try { const fetcher = receiver.fetcher; const r = await fetcher('../package.json'); rows.push('独立函数调用：' + r.status); } catch(e) { rows.push('独立函数调用：' + e.name + ': ' + e.message); }
+  try {
+    const home = new SharedHome({ key: 'a'.repeat(43), storage: { getItem: () => null, length: 0 }, fetcher: function (_url, options) {
+      return Reflect.apply(globalThis.fetch, this, [new URL('../package.json', location.href), { ...options, headers: {} }]);
+    } });
+    const data = await home.request('/local-fixture');
+    rows.push('修复后的真实同步客户端：' + (data.name === 'firework-ant-home' ? '通过' : '失败'));
+  } catch(e) { rows.push('真实同步客户端：' + e.message); }
+  output.textContent = rows.join('\n');
+};
+</script></html>

@@ -17,10 +17,11 @@ export function sharedState(base, events) {
   return { ...base, events: sorted, careDays };
 }
 export class SharedHome {
-  constructor({ key, storage, fetcher = globalThis.fetch, onChange = () => {}, onStatus = () => {} }) {
+  constructor({ key, storage, fetcher = globalThis.fetch, onChange = () => {}, onStatus = () => {}, requestTimeoutMs = 12000 }) {
     this.key = key; this.storage = storage; this.fetcher = fetcher; this.onChange = onChange; this.onStatus = onStatus;
     this.state = createState(); this.cursor = 0; this.profileVersion = 0; this.pending = new Map(); this.busy = null; this.authenticated = false;
     this.storageOK = true;
+    this.requestTimeoutMs = requestTimeoutMs;
     try {
       const raw = storage.getItem(CACHE);
       if (raw) {
@@ -68,10 +69,36 @@ export class SharedHome {
     void this.sync();
   }
   async request(path, options = {}) {
-    const response = await this.fetcher(API_URL + path, { ...options, cache: 'no-store', credentials: 'omit', signal: AbortSignal.timeout(12000), headers: { Authorization: `Bearer ${this.key}`, ...(options.body ? { 'Content-Type': 'application/json' } : {}) } });
-    const data = await response.json();
-    if (!response.ok) { const error = new Error(data.error || '共享服务暂时连接不上。'); error.status = response.status; error.data = data; throw error; }
-    return data;
+    const controller = new AbortController();
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; controller.abort(); }, this.requestTimeoutMs);
+    try {
+      // Native browser fetch rejects a SharedHome receiver (Illegal invocation).
+      const fetcher = this.fetcher;
+      const response = await fetcher(API_URL + path, {
+        ...options, cache: 'no-store', credentials: 'omit', signal: controller.signal,
+        headers: { Authorization: `Bearer ${this.key}`, ...(options.body ? { 'Content-Type': 'application/json' } : {}) },
+      });
+      const raw = await response.text();
+      let data;
+      try { data = JSON.parse(raw); } catch { /* Preserve the HTTP status of gateway error pages. */ }
+      if (!response.ok) {
+        const fallback = response.status === 401 ? '小窝钥匙不正确，请重新打开邀请链接。' : `共享服务暂时无法响应（${response.status}），稍后会重试。`;
+        const error = new Error(typeof data?.error === 'string' ? data.error : fallback);
+        error.status = response.status; error.code = 'http'; error.data = data;
+        throw error;
+      }
+      if (!data || typeof data !== 'object' || Array.isArray(data)) {
+        const error = new Error('共享服务返回了无法读取的内容，请稍后重试。');
+        error.code = 'protocol'; throw error;
+      }
+      return data;
+    } catch (cause) {
+      if (cause.code === 'http' || cause.code === 'protocol') throw cause;
+      const error = new Error(timedOut ? '连接共享服务超时，稍后会自动重试。' : '未能连接共享服务，请检查网络后重试。');
+      error.code = timedOut ? 'timeout' : 'network';
+      throw error;
+    } finally { clearTimeout(timer); }
   }
   async pull() {
     let data;
@@ -117,7 +144,7 @@ export class SharedHome {
     } catch (error) {
       this.lastError = error;
       if (error.status === 401) this.authenticated = false;
-      this.status(error.status === 401 ? error.message : this.pending.size ? `有 ${this.pending.size} 条待同步 · ${error.message || '联网后自动重试'}` : '暂时离线 · 联网后自动同步');
+      this.status(this.pending.size ? `有 ${this.pending.size} 条待同步 · ${error.message}` : error.message);
       return false;
     }
   }

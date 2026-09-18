@@ -102,3 +102,56 @@ test('invites parse only valid fragment keys',()=>{
   assert.equal(readKey('https://example.test/#key='+key),key);
   assert.equal(readKey('https://example.test/?key='+key),null);
 });
+
+test('browser fetch receives no SharedHome receiver and works without AbortSignal.timeout', async t => {
+  const previous = Object.getOwnPropertyDescriptor(AbortSignal, 'timeout');
+  Object.defineProperty(AbortSignal, 'timeout', { configurable: true, value: undefined });
+  t.after(() => Object.defineProperty(AbortSignal, 'timeout', previous));
+  let calls = 0;
+  const home = new SharedHome({ key, storage: storage(), fetcher: function (_url, options) {
+    assert.equal(this, undefined, 'native browser fetch cannot receive a SharedHome as this');
+    assert.ok(options.signal instanceof AbortSignal);
+    assert.equal(options.headers.Authorization, 'Bearer ' + key);
+    calls++;
+    return Promise.resolve(Response.json({ ...createState(), profileVersion: 1, cursor: 0, hasMore: false }));
+  } });
+  assert.equal(await home.sync(), true);
+  assert.ok(calls > 0);
+  assert.equal(home.lastError, null);
+});
+
+test('connection failures preserve HTTP, protocol and network diagnostics', async () => {
+  for (const scenario of [
+    { fetcher: async () => new Response('<html>gateway unavailable</html>', { status: 502 }), code: 'http', status: 502, text: /502/ },
+    { fetcher: async () => Response.json({error:'小窝钥匙不正确'}, { status: 401 }), code: 'http', status: 401, text: /钥匙/ },
+    { fetcher: async () => new Response('<html>login page</html>', { status: 200 }), code: 'protocol', text: /无法读取/ },
+    { fetcher: async () => { throw new TypeError('Failed to fetch'); }, code: 'network', text: /未能连接/ },
+  ]) {
+    let message;
+    const home = new SharedHome({key, storage:storage(), fetcher:scenario.fetcher, onStatus:value=>message=value});
+    assert.equal(await home.sync(),false);
+    assert.equal(home.lastError.code,scenario.code);
+    assert.equal(home.lastError.status,scenario.status);
+    assert.match(message,scenario.text);
+    assert.doesNotMatch(message,/暂时离线/);
+  }
+});
+
+test('request and response-body timeouts abort; settled requests clear their timer', async () => {
+  for (const body of [false,true]) {
+    const fetcher = (_url, {signal}) => {
+      const wait = () => new Promise((resolve,reject) => signal.addEventListener('abort',()=>reject(new DOMException('Aborted','AbortError')),{once:true}));
+      return body ? Promise.resolve({ok:true,status:200,text:wait}) : wait();
+    };
+    const home = new SharedHome({key,storage:storage(),fetcher,requestTimeoutMs:15});
+    assert.equal(await home.sync(),false);
+    assert.equal(home.lastError.code,'timeout');
+  }
+  let signal;
+  const home = new SharedHome({key,storage:storage(),requestTimeoutMs:15,fetcher:async (_url, options)=>{
+    signal=options.signal;return Response.json({ok:true});
+  }});
+  await home.request('/fixture');
+  await new Promise(resolve=>setTimeout(resolve,30));
+  assert.equal(signal.aborted,false);
+});
